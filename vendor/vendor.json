@@ -1,0 +1,91 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "SbgTGx3lnuqo29iiV2jdbnmVP7E=",
+			"path": "github.com/blendlabs/go-exception",
+			"revision": "3016f62c905ec9aab528104ef58ac4f5cd395a22",
+			"revisionTime": "2016-12-13T02:24:32Z"
+		},
+		{
+			"checksumSHA1": "aJ/kX/eCUlrCJBZ26Hwh/RXzAIw=",
+			"path": "github.com/golang/freetype/raster",
+			"revision": "d9be45aaf7452cc30c0ceb1b1bf7efe1d17b7c87",
+			"revisionTime": "2016-12-08T06:47:10Z"
+		},
+		{
+			"checksumSHA1": "M5K0e+YbpnI/3x9iNF/VOgOFnes=",
+			"path": "github.com/golang/freetype/truetype",
+			"revision": "d9be45aaf7452cc30c0ceb1b1bf7efe1d17b7c87",
+			"revisionTime": "2016-12-08T06:47:10Z"
+		},
+		{
+			"path": "github.com/prometheus/client_golang",
+			"revision": "",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "SMUvX2B8eoFd9wnPofwBKlN6btE=",
+			"path": "github.com/prometheus/client_golang/api/prometheus",
+			"revision": "575f371f7862609249a1be4c9145f429fe065e32",
+			"revisionTime": "2016-11-24T15:57:32Z",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "vopCLXHzYm+3l5fPKOf4/fQwrCM=",
+			"path": "github.com/prometheus/common/model",
+			"revision": "6d76b79f239843a04e8ad8dfd8fcadfa3920236f",
+			"revisionTime": "2016-12-20T17:45:53Z"
+		},
+		{
+			"checksumSHA1": "P+83xPKrI4xA+oa7DshuNErgSQg=",
+			"path": "github.com/wcharczuk/go-chart",
+			"revision": "21986dbce7623b27c78a8f67c40470f797df0081",
+			"revisionTime": "2016-12-16T02:07:07Z",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "7E3Y1HU/UbsQF/dxMRdjFmx9QDQ=",
+			"path": "golang.org/x/image/draw",
+			"revision": "1ff62c92167a10494f3e0b1e77cb67860a6ac43a",
+			"revisionTime": "2016-12-31T00:38:36Z"
+		},
+		{
+			"checksumSHA1": "+U1IB5N4LDS74y4fXjARb4/S4IE=",
+			"path": "golang.org/x/image/font",
+			"revision": "1ff62c92167a10494f3e0b1e77cb67860a6ac43a",
+			"revisionTime": "2016-12-31T00:38:36Z"
+		},
+		{
+			"checksumSHA1": "o7VkCGBiKM5HXzVzrIci1YDlpvc=",
+			"path": "golang.org/x/image/math/f64",
+			"revision": "1ff62c92167a10494f3e0b1e77cb67860a6ac43a",
+			"revisionTime": "2016-12-31T00:38:36Z"
+		},
+		{
+			"checksumSHA1": "euzvwlMLxyD0hwc+raoVsDLv6j4=",
+			"path": "golang.org/x/image/math/fixed",
+			"revision": "1ff62c92167a10494f3e0b1e77cb67860a6ac43a",
+			"revisionTime": "2016-12-31T00:38:36Z"
+		},
+		{
+			"checksumSHA1": "9jjO5GjLa0XF/nfWihF02RoH4qc=",
+			"path": "golang.org/x/net/context",
+			"revision": "905989bd20b7c354fd28a61074eed1c8f49ebc89",
+			"revisionTime": "2017-01-06T00:12:52Z"
+		},
+		{
+			"checksumSHA1": "WHc3uByvGaMcnSoI21fhzYgbOgg=",
+			"path": "golang.org/x/net/context/ctxhttp",
+			"revision": "905989bd20b7c354fd28a61074eed1c8f49ebc89",
+			"revisionTime": "2017-01-06T00:12:52Z"
+		},
+		{
+			"path": "wcharczuk/go-chart",
+			"revision": "",
+			"tree": true
+		}
+	],
+	"rootPath": "github.com/danielstutzman/prometheus-email-reports"
+}
