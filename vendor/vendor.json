@@ -34,6 +34,13 @@
 			"revisionTime": "2016-12-20T17:45:53Z"
 		},
 		{
+			"checksumSHA1": "2vV4QVC0NmfWDi3dupbj6MFSxIU=",
+			"path": "github.com/scorredoira/email",
+			"revision": "9c97e97eeb958f115130ff8242bcb09346abafdb",
+			"revisionTime": "2016-09-09T11:13:19Z",
+			"tree": true
+		},
+		{
 			"checksumSHA1": "P+83xPKrI4xA+oa7DshuNErgSQg=",
 			"path": "github.com/wcharczuk/go-chart",
 			"revision": "21986dbce7623b27c78a8f67c40470f797df0081",
