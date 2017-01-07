@@ -21,11 +21,6 @@
 			"revisionTime": "2016-12-08T06:47:10Z"
 		},
 		{
-			"path": "github.com/prometheus/client_golang",
-			"revision": "",
-			"tree": true
-		},
-		{
 			"checksumSHA1": "SMUvX2B8eoFd9wnPofwBKlN6btE=",
 			"path": "github.com/prometheus/client_golang/api/prometheus",
 			"revision": "575f371f7862609249a1be4c9145f429fe065e32",
@@ -80,11 +75,6 @@
 			"path": "golang.org/x/net/context/ctxhttp",
 			"revision": "905989bd20b7c354fd28a61074eed1c8f49ebc89",
 			"revisionTime": "2017-01-06T00:12:52Z"
-		},
-		{
-			"path": "wcharczuk/go-chart",
-			"revision": "",
-			"tree": true
 		}
 	],
 	"rootPath": "github.com/danielstutzman/prometheus-email-reports"
