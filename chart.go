@@ -57,7 +57,8 @@ func writeRgbPngToPalettedPng(buffer *bytes.Buffer, outputPngPath string) {
 		log.Fatalf("Error from os.Create('%s'): %s", outputPngPath, err)
 	}
 	defer outfile.Close()
-	err = png.Encode(outfile, paletted)
+	encoder := &png.Encoder{CompressionLevel: png.BestCompression}
+	err = encoder.Encode(outfile, paletted)
 	if err != nil {
 		log.Fatalf("Error from png.Encode: %s", err)
 	}
