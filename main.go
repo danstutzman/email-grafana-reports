@@ -1,20 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"github.com/prometheus/client_golang/api/prometheus"
 	"github.com/prometheus/common/model"
 	chart "github.com/wcharczuk/go-chart"
 	"golang.org/x/net/context"
 	"image"
-	"image/color"
-	"image/color/palette"
-	"image/draw"
-	"image/png"
 	"log"
 	"math"
-	"os"
 	"regexp"
 	"time"
 )
@@ -89,34 +83,6 @@ func queryCloudfrontVisits(api prometheus.QueryAPI) model.Matrix {
 	return value.(model.Matrix)
 }
 
-func writeRgbPngToPalettedPng(buffer *bytes.Buffer, outputPngPath string) {
-	src, err := png.Decode(buffer)
-	if err != nil {
-		log.Fatalf("Error from png.Decode: %s", err)
-	}
-
-	bounds := src.Bounds()
-	w, h := bounds.Max.X, bounds.Max.Y
-	paletted := image.NewPaletted(bounds, palette.Plan9)
-	for x := 0; x < w; x++ {
-		for y := 0; y < h; y++ {
-			oldColor := src.At(x, y)
-			paletted.Set(x, y, oldColor)
-		}
-	}
-
-	outfile, err := os.Create(outputPngPath)
-	if err != nil {
-		log.Fatalf("Error from os.Create('%s'): %s", outputPngPath, err)
-	}
-	defer outfile.Close()
-	encoder := &png.Encoder{CompressionLevel: png.BestCompression}
-	err = encoder.Encode(outfile, paletted)
-	if err != nil {
-		log.Fatalf("Error from png.Encode: %s", err)
-	}
-}
-
 func draw1SeriesChart(matrix model.Matrix, yAxisTitle string) image.Image {
 	if len(matrix) != 1 {
 		log.Fatalf("Expected only one series but got len(matrix) == %d", len(matrix))
@@ -178,39 +144,6 @@ func draw1SeriesChart(matrix model.Matrix, yAxisTitle string) image.Image {
 	return chartImage
 }
 
-func saveChartImagesAsPng(images []image.Image, pngPath string) {
-	paletted := image.NewPaletted(image.Rect(0, 0, 600, 600), palette.Plan9)
-
-	// set background to white
-	white := uint8(paletted.Palette.Index(color.White))
-	pix := paletted.Pix
-	for i := range pix {
-		pix[i] = white
-	}
-
-	MARGIN_Y := 10
-	destX := 100 // sort of centered
-	destY := MARGIN_Y
-	for _, chartImage := range images {
-		// Draw chartImage starting at Point{destX,destY}
-		draw.Draw(paletted, chartImage.Bounds().Add(image.Point{destX, destY}), chartImage,
-			chartImage.Bounds().Min, draw.Src)
-
-		// Increase Y by height of chart and margin
-		destY += chartImage.Bounds().Max.Y + MARGIN_Y
-	}
-
-	outfile, err := os.Create(pngPath)
-	if err != nil {
-		log.Fatalf("Error from os.Create('%s'): %s", pngPath, err)
-	}
-	defer outfile.Close()
-	err = png.Encode(outfile, paletted)
-	if err != nil {
-		log.Fatalf("Error from png.Encode: %s", err)
-	}
-}
-
 func main() {
 	config := getConfigFromFlags()
 
@@ -222,8 +155,9 @@ func main() {
 	}
 	prometheusApi := prometheus.NewQueryAPI(client)
 
+	multichart := NewMultiChart()
+
 	log.Printf("Querying Prometheus at http://%s...", config.prometheusHostPort)
-	chartImages := []image.Image{}
 	prometheusTimeout := time.Duration(1) * time.Second
 	c := make(chan model.Matrix, 1)
 	go func() {
@@ -231,14 +165,13 @@ func main() {
 	}()
 	select {
 	case cloudfrontVisitsMatrix := <-c:
-		chartImages = append(chartImages,
-			draw1SeriesChart(cloudfrontVisitsMatrix, "Cloudfront Visits"))
+		multichart.CopyChart(draw1SeriesChart(cloudfrontVisitsMatrix, "Cloudfront Visits"))
 	case <-time.After(prometheusTimeout):
 		log.Fatalf("Prometheus timeout after %v: %v",
 			prometheusTimeout, config.prometheusHostPort)
 	}
 
-	saveChartImagesAsPng(chartImages, config.pngPath)
+	multichart.SaveToPng(config.pngPath)
 
 	if config.doSendEmail {
 		sendMail(config.smtpHostPort, config.emailFrom,
