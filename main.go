@@ -141,8 +141,10 @@ func draw1SeriesChart(matrix model.Matrix, yAxisTitle string) image.Image {
 	}
 
 	graph := chart.Chart{
-		Width:  300,
-		Height: 200,
+		Title:      "CloudFront Visits",
+		TitleStyle: chart.StyleShow(),
+		Width:      300,
+		Height:     200,
 		XAxis: chart.XAxis{
 			Style: chart.StyleShow(),
 			Range: &chart.ContinuousRange{
