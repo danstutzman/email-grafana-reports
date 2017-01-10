@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"github.com/prometheus/client_golang/api/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/scorredoira/email"
@@ -16,10 +17,61 @@ import (
 	"net/mail"
 	"net/smtp"
 	"os"
+	"regexp"
 	"time"
 )
 
 const UNIX_MILLIS_TO_UNIX_NANOS = 1000 * 1000
+const HOST_AND_PORT_REGEXP = "^[a-z0-9-]+:[0-9]+)$"
+
+type Config struct {
+	pngPath            string
+	prometheusHostPort string
+	emailFrom          string
+	emailTo            string
+	emailSubject       string
+	smtpHostPort       string
+	doSendEmail        bool
+}
+
+func getConfigFromFlags() Config {
+	config := Config{}
+	flag.StringVar(&config.pngPath, "pngPath", "", "Path to save .png image to")
+	flag.StringVar(&config.prometheusHostPort, "prometheusHostPort", "",
+		"Hostname and port for Prometheus server (e.g. localhost:9090)")
+	flag.StringVar(&config.emailFrom, "emailFrom", "", "Email address to send report from; e.g. Reports <reports@monitoring.danstutzman.com>")
+	flag.StringVar(&config.emailTo, "emailTo", "", "Email address to send report to")
+	flag.StringVar(&config.emailSubject, "emailSubject", "", "Subject for email report")
+	flag.StringVar(&config.smtpHostPort, "smtpHostPort", "",
+		"Hostname and port for SMTP server; e.g. localhost:25")
+	flag.Parse()
+
+	if config.pngPath == "" {
+		log.Fatalf("You must specify -pngPath; try ./out.png")
+	}
+	if config.prometheusHostPort == "" {
+		log.Fatalf("You must specify -prometheusHostPort; try localhost:9090")
+	}
+	if matched, _ := regexp.Match(HOST_AND_PORT_REGEXP,
+		[]byte(config.prometheusHostPort)); matched {
+		log.Fatalf("-prometheusHostPort value must match " + HOST_AND_PORT_REGEXP)
+	}
+	if config.emailFrom == "" &&
+		config.emailTo == "" &&
+		config.emailSubject == "" &&
+		config.smtpHostPort == "" {
+		config.doSendEmail = false
+	} else if config.emailFrom != "" &&
+		config.emailTo != "" &&
+		config.emailSubject != "" &&
+		config.smtpHostPort != "" {
+		config.doSendEmail = true
+	} else {
+		log.Fatalf("Please supply values for all of -emailFrom, -emailTo, -emailSubject, and -smtpHostPort or none of them")
+	}
+
+	return config
+}
 
 func queryCloudfrontVisits(api prometheus.QueryAPI) model.Matrix {
 	value, err := api.QueryRange(context.TODO(),
@@ -199,14 +251,17 @@ func sendMail(smtpServerAndPort, from, to, subject, body, chartPngPath string) {
 }
 
 func main() {
-	prometheusAddress := "http://localhost:9090"
-	client, err := prometheus.New(prometheus.Config{Address: prometheusAddress})
+	config := getConfigFromFlags()
+
+	client, err := prometheus.New(prometheus.Config{
+		Address: "http://" + config.prometheusHostPort,
+	})
 	if err != nil {
 		log.Fatalf("Error from prometheus.New: %s", err)
 	}
 	prometheusApi := prometheus.NewQueryAPI(client)
 
-	log.Printf("Querying Prometheus at %s...", prometheusAddress)
+	log.Printf("Querying Prometheus at http://%s...", config.prometheusHostPort)
 	chartImages := []image.Image{}
 	prometheusTimeout := time.Duration(1) * time.Second
 	c := make(chan model.Matrix, 1)
@@ -218,12 +273,15 @@ func main() {
 		chartImages = append(chartImages,
 			draw1SeriesChart(cloudfrontVisitsMatrix, "Cloudfront Visits"))
 	case <-time.After(prometheusTimeout):
-		log.Fatalf("Prometheus timeout after %v: %v", prometheusTimeout, prometheusAddress)
+		log.Fatalf("Prometheus timeout after %v: %v",
+			prometheusTimeout, config.prometheusHostPort)
 	}
 
-	saveChartImagesAsPng(chartImages, "out.png")
+	saveChartImagesAsPng(chartImages, config.pngPath)
 
-	sendMail("localhost:25", "Reports <reports@monitoring.danstutzman.com>",
-		"dtstutz@gmail.com", "Report with Prometheus metrics", "(see attached image)",
-		"out.png")
+	if config.doSendEmail {
+		sendMail(config.smtpHostPort, config.emailFrom,
+			config.emailTo, config.emailSubject, "(see attached image)",
+			config.pngPath)
+	}
 }

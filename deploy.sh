@@ -40,13 +40,13 @@ ssh root@monitoring.danstutzman.com <<"EOF"
   touch /var/log/prometheus-email-reports.log
   chown prometheus-email-reports:root /var/log/prometheus-email-reports.log
   tee /etc/cron.d/prometheus-email-reports <<EOF2
-0 7 * * * prometheus-email-reports /home/prometheus-email-reports/gopath/bin/prometheus-email-reports >> /var/log/prometheus-email-reports.log
+0 7 * * * prometheus-email-reports /home/prometheus-email-reports/gopath/bin/prometheus-email-reports -pngPath out.png -prometheusHostPort localhost:9090 -emailFrom "Reports <reports@monitoring.danstutzman.com>" -emailSubject "Report with Prometheus metrics" -emailTo dtstutz@gmail.com -smtpHostPort localhost:25 >> /var/log/prometheus-email-reports.log
 EOF2
 EOF
 
 cat <<EOF
 To test, run:
 su -l prometheus-email-reports
-gopath/bin/prometheus-email-reports
+cat /etc/cron.d/prometheus-email-reports # to see command to run
 exit
 EOF
