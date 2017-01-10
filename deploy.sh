@@ -25,7 +25,7 @@ ssh root@monitoring.danstutzman.com <<"EOF"
   sudo -u prometheus-email-reports mkdir -p $GOPATH/src/github.com/danielstutzman/prometheus-email-reports
 EOF
 
-time rsync -a -e "ssh -C" -r . root@monitoring.danstutzman.com:/home/prometheus-email-reports/gopath/src/github.com/danielstutzman/prometheus-email-reports --include='*.go' --include='*/' --exclude='*' --prune-empty-dirs
+time rsync -a -e "ssh -C" -r . root@monitoring.danstutzman.com:/home/prometheus-email-reports/gopath/src/github.com/danielstutzman/prometheus-email-reports --include='*.go' --include='*/' --exclude='*' --prune-empty-dirs --delete
 
 fwknop -s -n monitoring.danstutzman.com
 ssh root@monitoring.danstutzman.com <<"EOF"
