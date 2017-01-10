@@ -65,15 +65,12 @@ func getConfigFromFlags() Config {
 	return config
 }
 
-func queryCloudfrontVisits(api prometheus.QueryAPI) model.Matrix {
-	value, err := api.QueryRange(context.TODO(),
-		`cloudfront_visits{site_name="vocabincontext.com",status="200"}`,
-		prometheus.Range{
-			Start: time.Now().Add(-24 * time.Hour),
-			End:   time.Now(),
-			Step:  20 * time.Minute,
-		},
-	)
+func query(api prometheus.QueryAPI, query string) model.Matrix {
+	value, err := api.QueryRange(context.TODO(), query, prometheus.Range{
+		Start: time.Now().Add(-24 * time.Hour),
+		End:   time.Now(),
+		Step:  20 * time.Minute,
+	})
 	if err != nil {
 		log.Fatalf("Error from api.QueryRange: %s", err)
 	}
@@ -83,41 +80,59 @@ func queryCloudfrontVisits(api prometheus.QueryAPI) model.Matrix {
 	return value.(model.Matrix)
 }
 
-func draw1SeriesChart(matrix model.Matrix, yAxisTitle string) image.Image {
-	if len(matrix) != 1 {
-		log.Fatalf("Expected only one series but got len(matrix) == %d", len(matrix))
-	}
+func draw1SeriesChart(matrix model.Matrix, yAxisTitle string, setYRangeTo01 bool) image.Image {
 	numValues := len(matrix[0].Values)
+	for i := range matrix {
+		if len(matrix[i].Values) != numValues {
+			log.Fatalf("len(matrix[0]) was %d but len(matrix[%d] is %d",
+				numValues, i, len(matrix[i].Values))
+		}
+	}
 
-	xvalues := make([]float64, numValues)
-	yvalues := make([]float64, numValues)
+	minXValue := math.MaxFloat64
+	maxXValue := -math.MaxFloat64
 	minYValue := math.MaxFloat64
 	maxYValue := -math.MaxFloat64
-	for i, samplePair := range matrix[0].Values {
-		xvalue := float64(int64(samplePair.Timestamp) * UNIX_MILLIS_TO_UNIX_NANOS)
-		xvalues[i] = xvalue
+	serieses := []chart.Series{}
+	for _, sampleStream := range matrix {
+		xvalues := make([]float64, numValues)
+		yvalues := make([]float64, numValues)
+		for i, samplePair := range sampleStream.Values {
+			xvalue := float64(int64(samplePair.Timestamp) * UNIX_MILLIS_TO_UNIX_NANOS)
+			xvalues[i] = xvalue
+			if xvalue < minXValue {
+				minXValue = xvalue
+			}
+			if xvalue > maxXValue {
+				maxXValue = xvalue
+			}
 
-		yvalue := float64(samplePair.Value)
-		yvalues[i] = yvalue
-		if yvalue < minYValue {
-			minYValue = yvalue
+			yvalue := float64(samplePair.Value)
+			yvalues[i] = yvalue
+			if yvalue < minYValue {
+				minYValue = yvalue
+			}
+			if yvalue > maxYValue {
+				maxYValue = yvalue
+			}
 		}
-		if yvalue > maxYValue {
-			maxYValue = yvalue
-		}
+		series := chart.ContinuousSeries{XValues: xvalues, YValues: yvalues}
+		serieses = append(serieses, series)
+	}
+
+	if setYRangeTo01 {
+		minYValue = 0.0
+		maxYValue = 1.0
 	}
 
 	graph := chart.Chart{
-		Title:      "CloudFront Visits",
+		Title:      yAxisTitle,
 		TitleStyle: chart.StyleShow(),
 		Width:      300,
 		Height:     200,
 		XAxis: chart.XAxis{
-			Style: chart.StyleShow(),
-			Range: &chart.ContinuousRange{
-				Min: xvalues[0],
-				Max: xvalues[numValues-1],
-			},
+			Style:          chart.StyleShow(),
+			Range:          &chart.ContinuousRange{Min: minXValue, Max: maxXValue},
 			ValueFormatter: chart.TimeHourValueFormatter,
 		},
 		YAxis: chart.YAxis{
@@ -126,9 +141,7 @@ func draw1SeriesChart(matrix model.Matrix, yAxisTitle string) image.Image {
 			Style:     chart.StyleShow(),
 			Range:     &chart.ContinuousRange{Min: minYValue, Max: maxYValue},
 		},
-		Series: []chart.Series{
-			chart.ContinuousSeries{XValues: xvalues, YValues: yvalues},
-		},
+		Series: serieses,
 	}
 
 	imageWriter := &chart.ImageWriter{}
@@ -156,21 +169,15 @@ func main() {
 	prometheusApi := prometheus.NewQueryAPI(client)
 
 	multichart := NewMultiChart()
-
 	log.Printf("Querying Prometheus at http://%s...", config.prometheusHostPort)
-	prometheusTimeout := time.Duration(1) * time.Second
-	c := make(chan model.Matrix, 1)
-	go func() {
-		c <- queryCloudfrontVisits(prometheusApi)
-	}()
-	select {
-	case cloudfrontVisitsMatrix := <-c:
-		multichart.CopyChart(draw1SeriesChart(cloudfrontVisitsMatrix, "Cloudfront Visits"))
-	case <-time.After(prometheusTimeout):
-		log.Fatalf("Prometheus timeout after %v: %v",
-			prometheusTimeout, config.prometheusHostPort)
-	}
+	multichart.CopyChart(draw1SeriesChart(query(prometheusApi,
+		`cloudfront_visits{site_name="vocabincontext.com",status="200"}`),
+		"Cloudfront Visits", false))
+	multichart.CopyChart(draw1SeriesChart(query(prometheusApi,
+		`1 - irate(node_cpu{mode="idle"}[5m])`),
+		"CPU", true))
 
+	log.Printf("Writing %s", config.pngPath)
 	multichart.SaveToPng(config.pngPath)
 
 	if config.doSendEmail {
