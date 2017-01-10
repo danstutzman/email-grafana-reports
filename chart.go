@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const UNIX_SECONDS_TO_UNIX_NANOS = 1000 * 1000
+const UNIX_MILLIS_TO_UNIX_NANOS = 1000 * 1000
 
 func queryCloudfrontVisits(api prometheus.QueryAPI) model.Matrix {
 	value, err := api.QueryRange(context.TODO(),
@@ -78,7 +78,7 @@ func draw1SeriesChart(matrix model.Matrix, yAxisTitle string) image.Image {
 	minYValue := math.MaxFloat64
 	maxYValue := -math.MaxFloat64
 	for i, samplePair := range matrix[0].Values {
-		xvalue := float64(int64(samplePair.Timestamp) * UNIX_SECONDS_TO_UNIX_NANOS)
+		xvalue := float64(int64(samplePair.Timestamp) * UNIX_MILLIS_TO_UNIX_NANOS)
 		xvalues[i] = xvalue
 
 		yvalue := float64(samplePair.Value)
