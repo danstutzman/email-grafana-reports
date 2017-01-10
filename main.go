@@ -8,6 +8,7 @@ import (
 	chart "github.com/wcharczuk/go-chart"
 	"golang.org/x/net/context"
 	"image"
+	"image/color"
 	"image/color/palette"
 	"image/draw"
 	"image/png"
@@ -179,6 +180,13 @@ func draw1SeriesChart(matrix model.Matrix, yAxisTitle string) image.Image {
 
 func saveChartImagesAsPng(images []image.Image, pngPath string) {
 	paletted := image.NewPaletted(image.Rect(0, 0, 600, 600), palette.Plan9)
+
+	// set background to white
+	white := uint8(paletted.Palette.Index(color.White))
+	pix := paletted.Pix
+	for i := range pix {
+		pix[i] = white
+	}
 
 	MARGIN_Y := 10
 	destX := 100 // sort of centered
