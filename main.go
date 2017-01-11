@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/prometheus/client_golang/api/prometheus"
+	"golang.org/x/net/context"
 	"log"
 	"regexp"
 	"time"
@@ -83,8 +84,8 @@ func main() {
 		setYRangeTo01: true,
 	}}
 	log.Printf("Querying Prometheus at http://%s...", config.prometheusHostPort)
-	queryToMatrix := doQueries(queries, prometheusApi, NUM_CHART_QUERIES_AT_ONCE,
-		PROMETHEUS_TIMEOUT_MILLIS*time.Millisecond)
+	queryToMatrix := doQueries(context.Background(), queries, prometheusApi,
+		NUM_CHART_QUERIES_AT_ONCE, PROMETHEUS_TIMEOUT_MILLIS*time.Millisecond)
 
 	multichart := NewMultiChart()
 	for _, query := range queries {

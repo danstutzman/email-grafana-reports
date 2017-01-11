@@ -15,12 +15,12 @@ type Query struct {
 	setYRangeTo01 bool
 }
 
-func queryOrFatal(api prometheus.QueryAPI, expression string,
+func queryOrFatal(ctx context.Context, api prometheus.QueryAPI, expression string,
 	timeoutDuration time.Duration) model.Matrix {
 
 	c := make(chan model.Matrix, 1)
 	go func() {
-		value, err := api.QueryRange(context.TODO(), expression, prometheus.Range{
+		value, err := api.QueryRange(ctx, expression, prometheus.Range{
 			Start: time.Now().Add(-24 * time.Hour),
 			End:   time.Now(),
 			Step:  20 * time.Minute,
@@ -43,7 +43,7 @@ func queryOrFatal(api prometheus.QueryAPI, expression string,
 	}
 }
 
-func doQueries(queries []Query, prometheusApi prometheus.QueryAPI,
+func doQueries(ctx context.Context, queries []Query, prometheusApi prometheus.QueryAPI,
 	numQueriesAtOnce int, timeoutDuration time.Duration) map[Query]model.Matrix {
 
 	queriesChan := make(chan Query, numQueriesAtOnce)
@@ -59,7 +59,7 @@ func doQueries(queries []Query, prometheusApi prometheus.QueryAPI,
 	wg.Add(len(queries))
 	for query := range queriesChan {
 		go func(query Query) {
-			matrix := queryOrFatal(prometheusApi, query.expression, timeoutDuration)
+			matrix := queryOrFatal(ctx, prometheusApi, query.expression, timeoutDuration)
 			queryToMatrix[query] = matrix
 			wg.Done()
 		}(query)
