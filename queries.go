@@ -55,12 +55,15 @@ func doQueries(ctx context.Context, queries []Query, prometheusApi prometheus.Qu
 	}()
 
 	queryToMatrix := map[Query]model.Matrix{}
+	var queryToMatrixMutex sync.Mutex
 	var wg sync.WaitGroup
 	wg.Add(len(queries))
 	for query := range queriesChan {
 		go func(query Query) {
 			matrix := queryOrFatal(ctx, prometheusApi, query.expression, timeoutDuration)
+			queryToMatrixMutex.Lock()
 			queryToMatrix[query] = matrix
+			queryToMatrixMutex.Unlock()
 			wg.Done()
 		}(query)
 	}
