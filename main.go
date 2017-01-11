@@ -5,12 +5,10 @@ import (
 	"github.com/prometheus/client_golang/api/prometheus"
 	"github.com/prometheus/common/model"
 	chart "github.com/wcharczuk/go-chart"
-	"golang.org/x/net/context"
 	"image"
 	"log"
 	"math"
 	"regexp"
-	"sync"
 	"time"
 )
 
@@ -27,12 +25,6 @@ type Config struct {
 	emailSubject       string
 	smtpHostPort       string
 	doSendEmail        bool
-}
-
-type Query struct {
-	expression    string
-	yAxisTitle    string
-	setYRangeTo01 bool
 }
 
 func getConfigFromFlags() Config {
@@ -72,33 +64,6 @@ func getConfigFromFlags() Config {
 	}
 
 	return config
-}
-
-func queryOrFatal(api prometheus.QueryAPI, expression string) model.Matrix {
-	c := make(chan model.Matrix, 1)
-	go func() {
-		value, err := api.QueryRange(context.TODO(), expression, prometheus.Range{
-			Start: time.Now().Add(-24 * time.Hour),
-			End:   time.Now(),
-			Step:  20 * time.Minute,
-		})
-		if err != nil {
-			log.Fatalf("Error from api.QueryRange: %s", err)
-		}
-		if value.Type() != model.ValMatrix {
-			log.Fatalf("Expected value.Type() == ValMatrix but got %d", value.Type())
-		}
-		c <- value.(model.Matrix)
-	}()
-
-	timeout := PROMETHEUS_TIMEOUT_MILLIS * time.Millisecond
-	select {
-	case matrix := <-c:
-		return matrix
-	case <-time.After(timeout):
-		log.Fatalf("Prometheus timeout after %v nanoseconds", timeout)
-		return nil
-	}
 }
 
 func drawChart(matrix model.Matrix, yAxisTitle string,
@@ -200,27 +165,9 @@ func main() {
 		yAxisTitle:    "CPU",
 		setYRangeTo01: true,
 	}}
-
-	queriesChan := make(chan Query, NUM_CHART_QUERIES_AT_ONCE)
-	go func() {
-		for _, query := range queries {
-			queriesChan <- query
-		}
-		close(queriesChan)
-	}()
-
 	log.Printf("Querying Prometheus at http://%s...", config.prometheusHostPort)
-	queryToMatrix := map[Query]model.Matrix{}
-	var wg sync.WaitGroup
-	wg.Add(len(queries))
-	for query := range queriesChan {
-		go func(query Query) {
-			matrix := queryOrFatal(prometheusApi, query.expression)
-			queryToMatrix[query] = matrix
-			wg.Done()
-		}(query)
-	}
-	wg.Wait()
+	queryToMatrix := doQueries(queries, prometheusApi, NUM_CHART_QUERIES_AT_ONCE,
+		PROMETHEUS_TIMEOUT_MILLIS*time.Millisecond)
 
 	multichart := NewMultiChart()
 	for _, query := range queries {
