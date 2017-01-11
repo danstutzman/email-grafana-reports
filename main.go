@@ -10,11 +10,14 @@ import (
 	"log"
 	"math"
 	"regexp"
+	"sync"
 	"time"
 )
 
 const UNIX_MILLIS_TO_UNIX_NANOS = 1000 * 1000
 const HOST_AND_PORT_REGEXP = "^[a-z0-9-]+:[0-9]+)$"
+const NUM_CHART_QUERIES_AT_ONCE = 3
+const PROMETHEUS_TIMEOUT_MILLIS = 1000
 
 type Config struct {
 	pngPath            string
@@ -24,6 +27,12 @@ type Config struct {
 	emailSubject       string
 	smtpHostPort       string
 	doSendEmail        bool
+}
+
+type Query struct {
+	expression    string
+	yAxisTitle    string
+	setYRangeTo01 bool
 }
 
 func getConfigFromFlags() Config {
@@ -65,22 +74,36 @@ func getConfigFromFlags() Config {
 	return config
 }
 
-func query(api prometheus.QueryAPI, query string) model.Matrix {
-	value, err := api.QueryRange(context.TODO(), query, prometheus.Range{
-		Start: time.Now().Add(-24 * time.Hour),
-		End:   time.Now(),
-		Step:  20 * time.Minute,
-	})
-	if err != nil {
-		log.Fatalf("Error from api.QueryRange: %s", err)
+func queryOrFatal(api prometheus.QueryAPI, expression string) model.Matrix {
+	c := make(chan model.Matrix, 1)
+	go func() {
+		value, err := api.QueryRange(context.TODO(), expression, prometheus.Range{
+			Start: time.Now().Add(-24 * time.Hour),
+			End:   time.Now(),
+			Step:  20 * time.Minute,
+		})
+		if err != nil {
+			log.Fatalf("Error from api.QueryRange: %s", err)
+		}
+		if value.Type() != model.ValMatrix {
+			log.Fatalf("Expected value.Type() == ValMatrix but got %d", value.Type())
+		}
+		c <- value.(model.Matrix)
+	}()
+
+	timeout := PROMETHEUS_TIMEOUT_MILLIS * time.Millisecond
+	select {
+	case matrix := <-c:
+		return matrix
+	case <-time.After(timeout):
+		log.Fatalf("Prometheus timeout after %v nanoseconds", timeout)
+		return nil
 	}
-	if value.Type() != model.ValMatrix {
-		log.Fatalf("Expected value.Type() == ValMatrix but got %d", value.Type())
-	}
-	return value.(model.Matrix)
 }
 
-func draw1SeriesChart(matrix model.Matrix, yAxisTitle string, setYRangeTo01 bool) image.Image {
+func drawChart(matrix model.Matrix, yAxisTitle string,
+	setYRangeTo01 bool) image.Image {
+
 	numValues := len(matrix[0].Values)
 	for i := range matrix {
 		if len(matrix[i].Values) != numValues {
@@ -168,14 +191,42 @@ func main() {
 	}
 	prometheusApi := prometheus.NewQueryAPI(client)
 
-	multichart := NewMultiChart()
+	queries := []Query{{
+		expression:    `cloudfront_visits{site_name="vocabincontext.com",status="200"}`,
+		yAxisTitle:    "CloudFront Visits",
+		setYRangeTo01: false,
+	}, {
+		expression:    `1 - irate(node_cpu{mode="idle"}[5m])`,
+		yAxisTitle:    "CPU",
+		setYRangeTo01: true,
+	}}
+
+	queriesChan := make(chan Query, NUM_CHART_QUERIES_AT_ONCE)
+	go func() {
+		for _, query := range queries {
+			queriesChan <- query
+		}
+		close(queriesChan)
+	}()
+
 	log.Printf("Querying Prometheus at http://%s...", config.prometheusHostPort)
-	multichart.CopyChart(draw1SeriesChart(query(prometheusApi,
-		`cloudfront_visits{site_name="vocabincontext.com",status="200"}`),
-		"Cloudfront Visits", false))
-	multichart.CopyChart(draw1SeriesChart(query(prometheusApi,
-		`1 - irate(node_cpu{mode="idle"}[5m])`),
-		"CPU", true))
+	queryToMatrix := map[Query]model.Matrix{}
+	var wg sync.WaitGroup
+	wg.Add(len(queries))
+	for query := range queriesChan {
+		go func(query Query) {
+			matrix := queryOrFatal(prometheusApi, query.expression)
+			queryToMatrix[query] = matrix
+			wg.Done()
+		}(query)
+	}
+	wg.Wait()
+
+	multichart := NewMultiChart()
+	for _, query := range queries {
+		matrix := queryToMatrix[query]
+		multichart.CopyChart(drawChart(matrix, query.yAxisTitle, query.setYRangeTo01))
+	}
 
 	log.Printf("Writing %s", config.pngPath)
 	multichart.SaveToPng(config.pngPath)
