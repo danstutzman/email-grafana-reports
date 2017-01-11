@@ -1,8 +1,10 @@
 #!/bin/bash -ex
+
 pushd $GOPATH/src/github.com/danielstutzman/prometheus-email-reports
 go vet .
 pushd
-go install .
+
+go install -race .
 
 fwknop -s -n monitoring.danstutzman.com
 ssh root@monitoring.danstutzman.com <<"EOF"
@@ -35,7 +37,7 @@ ssh root@monitoring.danstutzman.com <<"EOF"
   GOPATH=/home/prometheus-email-reports/gopath
   cd $GOPATH/src/github.com/danielstutzman/prometheus-email-reports
   chown -R prometheus-email-reports:prometheus-email-reports .
-  time sudo -u prometheus-email-reports GOPATH=$GOPATH GOROOT=$GOROOT $GOROOT/bin/go install
+  time sudo -u prometheus-email-reports GOPATH=$GOPATH GOROOT=$GOROOT $GOROOT/bin/go install -race
 
   touch /var/log/prometheus-email-reports.log
   chown prometheus-email-reports:root /var/log/prometheus-email-reports.log
