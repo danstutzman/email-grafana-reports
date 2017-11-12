@@ -1,6 +1,11 @@
 #!/bin/bash -ex
-go install -race .
+
+cd $GOPATH/src/github.com/danielstutzman/email-grafana-reports
+go vet github.com/danielstutzman/email-grafana-reports
+go install -v -race .
 
 rm -f out.png
-$GOPATH/bin/prometheus-email-reports -pngPath out.png -prometheusHostPort localhost:9090
+$GOPATH/bin/email-grafana-reports \
+  -pngPath out.png \
+  -prometheusHostPort localhost:9090
 open out.png
