@@ -10,7 +10,7 @@ import (
 	chart "github.com/wcharczuk/go-chart"
 )
 
-func drawChart(points []Point, yAxisTitle string,
+func drawChart(points [][]Point, yAxisTitle string,
 	xMin, xMax time.Time,
 	yMin, yMax string) image.Image {
 
@@ -20,26 +20,28 @@ func drawChart(points []Point, yAxisTitle string,
 	maxYValue := -math.MaxFloat64
 	serieses := []chart.Series{}
 
-	xvalues := make([]float64, len(points))
-	yvalues := make([]float64, len(points))
-	for i, point := range points {
-		xvalue := float64(point.Time.UnixNano())
-		xvalues[i] = xvalue
+	for _, seriesPoints := range points {
+		xvalues := make([]float64, len(seriesPoints))
+		yvalues := make([]float64, len(seriesPoints))
+		for i, point := range seriesPoints {
+			xvalue := float64(point.Time.UnixNano())
+			xvalues[i] = xvalue
 
-		yvalue := point.Value
-		yvalues[i] = yvalue
-		if yvalue < minYValue {
-			minYValue = yvalue
+			yvalue := point.Value
+			yvalues[i] = yvalue
+			if yvalue < minYValue {
+				minYValue = yvalue
+			}
+			if yvalue > maxYValue {
+				maxYValue = yvalue
+			}
 		}
-		if yvalue > maxYValue {
-			maxYValue = yvalue
+		if minYValue == maxYValue {
+			minYValue = 0
 		}
+		series := chart.ContinuousSeries{XValues: xvalues, YValues: yvalues}
+		serieses = append(serieses, series)
 	}
-	if minYValue == maxYValue {
-		minYValue = 0
-	}
-	series := chart.ContinuousSeries{XValues: xvalues, YValues: yvalues}
-	serieses = append(serieses, series)
 
 	if yMin != "" {
 		var err error

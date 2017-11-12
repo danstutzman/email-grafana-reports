@@ -126,12 +126,44 @@ func main() {
 					}
 
 					var command string
-					if target.Query != "" {
+					if false && target.Query != "" {
 						command = target.Query
 					} else {
+						select_ := selectsToSelect(target.Selects)
+
+						wheres := []string{"WHERE $timeFilter"}
+						for _, tag := range target.Tags {
+							where := fmt.Sprintf("%s %s '%s'", tag.Key, tag.Operator, tag.Value)
+							wheres = append(wheres, where)
+						}
+
+						groupBys := []string{}
+						fill := ""
+						for _, groupBy := range target.GroupBys {
+							if groupBy.Type == "time" {
+								groupBys = append(groupBys, "time($__interval)")
+							} else if groupBy.Type == "tag" {
+								if len(groupBy.Params) != 1 {
+									log.Fatalf("Expected len(Params)=1 but was %d", len(groupBy.Params))
+								}
+								groupBys = append(groupBys, groupBy.Params[0])
+							} else if groupBy.Type == "fill" {
+								if len(groupBy.Params) != 1 {
+									log.Fatalf("Expected len(Params)=1 but was %d", len(groupBy.Params))
+								}
+								fill = fmt.Sprintf("fill(%s)", groupBy.Params[0])
+							} else {
+								log.Fatalf("Unknown GroupBy Type '%s'", groupBy.Type)
+							}
+						}
+
 						command = fmt.Sprintf(
-							"SELECT mean(value) FROM %s WHERE $timeFilter GROUP BY time($__interval)",
-							target.Measurement)
+							"SELECT %s FROM %s %s GROUP BY %s %s",
+							select_,
+							target.Measurement,
+							strings.Join(wheres, " AND "),
+							strings.Join(groupBys, ", "),
+							fill)
 					}
 					command = strings.Replace(command, "$timeFilter",
 						fmt.Sprintf("time > %d", xMin.UnixNano()), 1)
@@ -160,4 +192,47 @@ func main() {
 			config.emailTo, config.emailSubject, "(see attached image)",
 			config.pngPath)
 	}
+}
+
+func selectsToSelect(selects [][]Select) string {
+	if len(selects) != 1 {
+		log.Fatalf("Expected len(selects) to be 1 but got %+v", selects)
+	}
+	select1 := selects[0]
+
+	out := ""
+	for _, select_ := range select1 {
+
+		if select_.Type == "field" {
+			if out == "" {
+				if len(select_.Params) != 1 {
+					log.Fatalf("Expected len(Params)=1 but was %d for selects=%+v",
+						len(select_.Params), select_)
+				}
+				out = select_.Params[0]
+			} else {
+				log.Fatalf("Select with type=field must be first; selects is %+v", select1)
+			}
+		} else if select_.Type == "count" {
+			out = "count(" + out + ")"
+		} else if select_.Type == "mean" {
+			out = "mean(" + out + ")"
+		} else if select_.Type == "derivative" {
+			if len(select_.Params) != 1 {
+				log.Fatalf("Expected len(Params)=1 but was %d for selects=%+v",
+					len(select_.Params), select_)
+			}
+			out = "derivative(" + out + ", " + select_.Params[0] + ")"
+		} else if select_.Type == "math" {
+			if len(select_.Params) != 1 {
+				log.Fatalf("Expected len(Params)=1 but was %d for selects=%+v",
+					len(select_.Params), select_)
+			}
+			out = "(" + out + ")" + select_.Params[0] // e.g. "(x)/2"
+		} else {
+			log.Fatalf("Unexpected select type = '%s'", select_.Type)
+		}
+	}
+
+	return out
 }

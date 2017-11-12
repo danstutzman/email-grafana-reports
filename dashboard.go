@@ -24,14 +24,33 @@ type Panel struct {
 }
 
 type Target struct {
-	DsType      string `json:"dsType"`
-	Query       string `json:"query"`
-	Measurement string `json:"measurement"`
+	DsType      string     `json:"dsType"`
+	Query       string     `json:"query"`
+	Selects     [][]Select `json:"select"`
+	Measurement string     `json:"measurement"`
+	Tags        []Tag      `json:"tags"`
+	GroupBys    []GroupBy  `json:"groupBy"`
+}
+
+type Select struct {
+	Params []string `json:"params"`
+	Type   string   `json:"type"`
 }
 
 type YAxis struct {
 	Min string `json:"min"`
 	Max string `json:"max"`
+}
+
+type Tag struct {
+	Key      string `json:"key"`
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+}
+
+type GroupBy struct {
+	Params []string `json:"params"`
+	Type   string   `json:"type"`
 }
 
 func parseDashboardsJson(reader io.Reader) []Dashboard {

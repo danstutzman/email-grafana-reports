@@ -8,7 +8,8 @@ import (
 	clientPkg "github.com/influxdata/influxdb/client/v2"
 )
 
-func query(client clientPkg.Client, databaseName, command string) []Point {
+// Possibly returns multiple series if you select across multiple tags
+func query(client clientPkg.Client, databaseName, command string) [][]Point {
 	log.Printf("Query is %s", command)
 
 	q := clientPkg.Query{
@@ -37,9 +38,9 @@ func query(client clientPkg.Client, databaseName, command string) []Point {
 		log.Fatalf("Unexpected Err in result for command %s: %v", command, result.Err)
 	}
 
-	points := []Point{}
-	// you get multiple series if you union multiple tags
+	allPoints := [][]Point{}
 	for _, series := range result.Series {
+		seriesPoints := []Point{}
 		if len(series.Columns) != 2 {
 			log.Fatalf("Expected len(Columns) to be 2, but was %d in command %s", len(series.Columns), command)
 		}
@@ -63,10 +64,11 @@ func query(client clientPkg.Client, databaseName, command string) []Point {
 					Time:  time.Unix(0, timeNanos).UTC(),
 					Value: value,
 				}
-				points = append(points, point)
+				seriesPoints = append(seriesPoints, point)
 			}
 		}
+		allPoints = append(allPoints, seriesPoints)
 	}
 
-	return points
+	return allPoints
 }
