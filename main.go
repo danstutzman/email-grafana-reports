@@ -92,6 +92,8 @@ func main() {
 
 	multichart := NewMultiChart()
 	for _, dashboard := range dashboards {
+		multichart.WriteHeader(dashboard.Title)
+
 		command := "SELECT count(status) FROM \"belugacdn_logs\" WHERE time > now() - 1d GROUP BY time(1h) fill(null);"
 		command = strings.Replace(command, "$timeFilter", "time > now() - 10m", 1)
 		command = strings.Replace(command, "$__interval", "1m", 1)

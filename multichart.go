@@ -3,36 +3,49 @@ package main
 import (
 	"image"
 	"image/color"
-	"image/color/palette"
 	"image/draw"
 	"image/png"
 	"log"
 	"os"
+
+	"github.com/fogleman/gg"
 )
 
 const MARGIN_Y = 10
+const STICK_TO_LEFT = 0.0
+const STICK_TO_TOP = 1.0
 
 type MultiChart struct {
-	bigImage   *image.Paletted
+	bigImage   *image.RGBA
 	nextChartX int
 	nextChartY int
 }
 
 func NewMultiChart() *MultiChart {
-	bigImage := image.NewPaletted(image.Rect(0, 0, 600, 600), palette.Plan9)
+	bigImage := image.NewRGBA(image.Rect(0, 0, 600, 600))
 
 	// set background to white
-	white := uint8(bigImage.Palette.Index(color.White))
-	pix := bigImage.Pix
-	for i := range pix {
-		pix[i] = white
-	}
+	white := color.RGBA{255, 255, 255, 255}
+	draw.Draw(bigImage, bigImage.Bounds(), &image.Uniform{white},
+		image.ZP, draw.Src)
 
 	return &MultiChart{
 		bigImage:   bigImage,
 		nextChartX: 0,
 		nextChartY: 0,
 	}
+}
+
+func (multichart *MultiChart) WriteHeader(headerText string) {
+	context := gg.NewContextForRGBA(multichart.bigImage)
+	context.SetRGB(0, 0, 0)
+	if err := context.LoadFontFace("/Library/Fonts/Arial.ttf", 30); err != nil {
+		panic(err)
+	}
+	context.DrawStringAnchored(headerText,
+		0, float64(multichart.nextChartY), STICK_TO_LEFT, STICK_TO_TOP)
+
+	multichart.nextChartY += 30
 }
 
 func (multichart *MultiChart) CopyChart(chartImage image.Image) {
