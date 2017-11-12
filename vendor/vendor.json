@@ -40,19 +40,6 @@
 			"revisionTime": "2017-11-11T04:01:00Z"
 		},
 		{
-			"checksumSHA1": "SMUvX2B8eoFd9wnPofwBKlN6btE=",
-			"path": "github.com/prometheus/client_golang/api/prometheus",
-			"revision": "575f371f7862609249a1be4c9145f429fe065e32",
-			"revisionTime": "2016-11-24T15:57:32Z",
-			"tree": true
-		},
-		{
-			"checksumSHA1": "vopCLXHzYm+3l5fPKOf4/fQwrCM=",
-			"path": "github.com/prometheus/common/model",
-			"revision": "6d76b79f239843a04e8ad8dfd8fcadfa3920236f",
-			"revisionTime": "2016-12-20T17:45:53Z"
-		},
-		{
 			"checksumSHA1": "2vV4QVC0NmfWDi3dupbj6MFSxIU=",
 			"path": "github.com/scorredoira/email",
 			"revision": "9c97e97eeb958f115130ff8242bcb09346abafdb",
