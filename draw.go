@@ -5,13 +5,17 @@ import (
 	"log"
 	"math"
 	"strconv"
+	"time"
 
 	chart "github.com/wcharczuk/go-chart"
 )
 
-func drawChart(points []Point, yAxisTitle, yMin, yMax string) image.Image {
-	minXValue := math.MaxFloat64
-	maxXValue := -math.MaxFloat64
+func drawChart(points []Point, yAxisTitle string,
+	xMin, xMax time.Time,
+	yMin, yMax string) image.Image {
+
+	minXValue := float64(xMin.UnixNano())
+	maxXValue := float64(xMax.UnixNano())
 	minYValue := math.MaxFloat64
 	maxYValue := -math.MaxFloat64
 	serieses := []chart.Series{}
@@ -21,12 +25,6 @@ func drawChart(points []Point, yAxisTitle, yMin, yMax string) image.Image {
 	for i, point := range points {
 		xvalue := float64(point.Time.UnixNano())
 		xvalues[i] = xvalue
-		if xvalue < minXValue {
-			minXValue = xvalue
-		}
-		if xvalue > maxXValue {
-			maxXValue = xvalue
-		}
 
 		yvalue := point.Value
 		yvalues[i] = yvalue

@@ -114,6 +114,17 @@ func main() {
 						log.Fatalf("Expected dsType=influxdb in panel %+v", panel)
 					}
 
+					xMin := time.Now().AddDate(0, 0, -1).UTC()
+					xMax := time.Now().UTC()
+					yMin := ""
+					if len(panel.YAxes) > 0 {
+						yMin = panel.YAxes[0].Min
+					}
+					yMax := ""
+					if len(panel.YAxes) > 0 {
+						yMax = panel.YAxes[0].Max
+					}
+
 					var command string
 					if target.Query != "" {
 						command = target.Query
@@ -122,25 +133,16 @@ func main() {
 							"SELECT mean(value) FROM %s WHERE $timeFilter GROUP BY time($__interval)",
 							target.Measurement)
 					}
-					command = strings.Replace(command, "$timeFilter", "time > now() - 1d", 1)
+					command = strings.Replace(command, "$timeFilter",
+						fmt.Sprintf("time > %d", xMin.UnixNano()), 1)
 					command = strings.Replace(command, "$__interval", "1h", 1)
 					if command == "" {
 						log.Fatalf("Blank query for panel %+v", panel)
 					}
 					points := query(client, dbName, command)
 
-					yMin := ""
-					if len(panel.YAxes) > 0 {
-						yMin = panel.YAxes[0].Min
-					}
-
-					yMax := ""
-					if len(panel.YAxes) > 0 {
-						yMax = panel.YAxes[0].Max
-					}
-
 					if len(points) > 0 {
-						image := drawChart(points, panel.Title, yMin, yMax)
+						image := drawChart(points, panel.Title, xMin, xMax, yMin, yMax)
 						multichart.CopyChart(image)
 					} else {
 						multichart.WriteHeader("no points")
