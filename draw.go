@@ -1,54 +1,43 @@
 package main
 
 import (
-	"github.com/prometheus/common/model"
-	chart "github.com/wcharczuk/go-chart"
 	"image"
 	"log"
 	"math"
+
+	chart "github.com/wcharczuk/go-chart"
 )
 
-func drawChart(matrix model.Matrix, yAxisTitle string,
-	setYRangeTo01 bool) image.Image {
-
-	numValues := len(matrix[0].Values)
-	for i := range matrix {
-		if len(matrix[i].Values) != numValues {
-			log.Fatalf("len(matrix[0]) was %d but len(matrix[%d] is %d",
-				numValues, i, len(matrix[i].Values))
-		}
-	}
-
+func drawChart(points []Point, yAxisTitle string, setYRangeTo01 bool) image.Image {
 	minXValue := math.MaxFloat64
 	maxXValue := -math.MaxFloat64
 	minYValue := math.MaxFloat64
 	maxYValue := -math.MaxFloat64
 	serieses := []chart.Series{}
-	for _, sampleStream := range matrix {
-		xvalues := make([]float64, numValues)
-		yvalues := make([]float64, numValues)
-		for i, samplePair := range sampleStream.Values {
-			xvalue := float64(int64(samplePair.Timestamp) * UNIX_MILLIS_TO_UNIX_NANOS)
-			xvalues[i] = xvalue
-			if xvalue < minXValue {
-				minXValue = xvalue
-			}
-			if xvalue > maxXValue {
-				maxXValue = xvalue
-			}
 
-			yvalue := float64(samplePair.Value)
-			yvalues[i] = yvalue
-			if yvalue < minYValue {
-				minYValue = yvalue
-			}
-			if yvalue > maxYValue {
-				maxYValue = yvalue
-			}
+	xvalues := make([]float64, len(points))
+	yvalues := make([]float64, len(points))
+	for i, point := range points {
+		xvalue := float64(point.Time.UnixNano())
+		xvalues[i] = xvalue
+		if xvalue < minXValue {
+			minXValue = xvalue
 		}
-		series := chart.ContinuousSeries{XValues: xvalues, YValues: yvalues}
-		serieses = append(serieses, series)
+		if xvalue > maxXValue {
+			maxXValue = xvalue
+		}
+
+		yvalue := point.Value
+		yvalues[i] = yvalue
+		if yvalue < minYValue {
+			minYValue = yvalue
+		}
+		if yvalue > maxYValue {
+			maxYValue = yvalue
+		}
 	}
+	series := chart.ContinuousSeries{XValues: xvalues, YValues: yvalues}
+	serieses = append(serieses, series)
 
 	if setYRangeTo01 {
 		minYValue = 0.0

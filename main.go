@@ -2,33 +2,42 @@ package main
 
 import (
 	"flag"
-	"github.com/prometheus/client_golang/api/prometheus"
-	"golang.org/x/net/context"
 	"log"
-	"regexp"
+	"strings"
 	"time"
+
+	clientPkg "github.com/influxdata/influxdb/client/v2"
 )
 
 const UNIX_MILLIS_TO_UNIX_NANOS = 1000 * 1000
-const HOST_AND_PORT_REGEXP = "^[a-z0-9-]+:[0-9]+)$"
 const NUM_CHART_QUERIES_AT_ONCE = 3
 const PROMETHEUS_TIMEOUT_MILLIS = 1000
 
 type Config struct {
-	pngPath            string
-	prometheusHostPort string
-	emailFrom          string
-	emailTo            string
-	emailSubject       string
-	smtpHostPort       string
-	doSendEmail        bool
+	pngPath          string
+	influxdbHostname string
+	influxdbPort     string
+	influxdbUsername string
+	influxdbPassword string
+	emailFrom        string
+	emailTo          string
+	emailSubject     string
+	smtpHostPort     string
+	doSendEmail      bool
+}
+
+type Point struct {
+	Time  time.Time
+	Value float64
 }
 
 func getConfigFromFlags() Config {
 	config := Config{}
 	flag.StringVar(&config.pngPath, "pngPath", "", "Path to save .png image to")
-	flag.StringVar(&config.prometheusHostPort, "prometheusHostPort", "",
-		"Hostname and port for Prometheus server (e.g. localhost:9090)")
+	flag.StringVar(&config.influxdbHostname, "influxdbHostname", "localhost", "Hostname for InfluxDB")
+	flag.StringVar(&config.influxdbPort, "influxdbPort", "8086", "Port for InfluxDB")
+	flag.StringVar(&config.influxdbUsername, "influxdbUsername", "admin", "Username for InfluxDB, e.g. admin")
+	flag.StringVar(&config.influxdbPassword, "influxdbPassword", "", "Password for InfluxDB")
 	flag.StringVar(&config.emailFrom, "emailFrom", "", "Email address to send report from; e.g. Reports <reports@monitoring.danstutzman.com>")
 	flag.StringVar(&config.emailTo, "emailTo", "", "Email address to send report to")
 	flag.StringVar(&config.emailSubject, "emailSubject", "", "Subject for email report")
@@ -38,13 +47,6 @@ func getConfigFromFlags() Config {
 
 	if config.pngPath == "" {
 		log.Fatalf("You must specify -pngPath; try ./out.png")
-	}
-	if config.prometheusHostPort == "" {
-		log.Fatalf("You must specify -prometheusHostPort; try localhost:9090")
-	}
-	if matched, _ := regexp.Match(HOST_AND_PORT_REGEXP,
-		[]byte(config.prometheusHostPort)); matched {
-		log.Fatalf("-prometheusHostPort value must match " + HOST_AND_PORT_REGEXP)
 	}
 	if config.emailFrom == "" &&
 		config.emailTo == "" &&
@@ -66,32 +68,23 @@ func getConfigFromFlags() Config {
 func main() {
 	config := getConfigFromFlags()
 
-	client, err := prometheus.New(prometheus.Config{
-		Address: "http://" + config.prometheusHostPort,
+	client, err := clientPkg.NewHTTPClient(clientPkg.HTTPConfig{
+		Addr:     "http://" + config.influxdbHostname + ":" + config.influxdbPort,
+		Username: config.influxdbUsername,
+		Password: config.influxdbPassword,
 	})
 	if err != nil {
-		log.Fatalf("Error from prometheus.New: %s", err)
+		log.Fatalf("Error from NewHTTPClient: %s", err)
 	}
-	prometheusApi := prometheus.NewQueryAPI(client)
 
-	queries := []Query{{
-		expression:    `cloudfront_visits{site_name="vocabincontext.com",status="200"}`,
-		yAxisTitle:    "CloudFront Visits",
-		setYRangeTo01: false,
-	}, {
-		expression:    `1 - irate(node_cpu{mode="idle"}[5m])`,
-		yAxisTitle:    "CPU",
-		setYRangeTo01: true,
-	}}
-	log.Printf("Querying Prometheus at http://%s...", config.prometheusHostPort)
-	queryToMatrix := doQueries(context.Background(), queries, prometheusApi,
-		NUM_CHART_QUERIES_AT_ONCE, PROMETHEUS_TIMEOUT_MILLIS*time.Millisecond)
+	command := "SELECT count(status) FROM \"belugacdn_logs\" WHERE time > now() - 1d GROUP BY time(1h) fill(null);"
+	command = strings.Replace(command, "$timeFilter", "time > now() - 10m", 1)
+	command = strings.Replace(command, "$__interval", "1m", 1)
+
+	points := query(client, "mydb", command)
 
 	multichart := NewMultiChart()
-	for _, query := range queries {
-		matrix := queryToMatrix[query]
-		multichart.CopyChart(drawChart(matrix, query.yAxisTitle, query.setYRangeTo01))
-	}
+	multichart.CopyChart(drawChart(points, "BelugaCDN logs", false))
 
 	log.Printf("Writing %s", config.pngPath)
 	multichart.SaveToPng(config.pngPath)

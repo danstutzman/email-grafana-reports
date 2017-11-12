@@ -1,73 +1,70 @@
 package main
 
 import (
-	"github.com/prometheus/client_golang/api/prometheus"
-	"github.com/prometheus/common/model"
-	"golang.org/x/net/context"
+	"encoding/json"
 	"log"
-	"sync"
 	"time"
+
+	clientPkg "github.com/influxdata/influxdb/client/v2"
 )
 
-type Query struct {
-	expression    string
-	yAxisTitle    string
-	setYRangeTo01 bool
-}
+func query(client clientPkg.Client, databaseName, command string) []Point {
+	q := clientPkg.Query{
+		Command:   command,
+		Database:  databaseName,
+		Precision: "ns",
+	}
+	response, err := client.Query(q)
+	if err != nil {
+		log.Fatalf("Error from Query: %s", err)
+	}
 
-func queryOrFatal(ctx context.Context, api prometheus.QueryAPI, expression string,
-	timeoutDuration time.Duration) model.Matrix {
+	if response.Error() != nil {
+		log.Fatalf("Error from query: %s", response.Error())
+	}
 
-	c := make(chan model.Matrix, 1)
-	go func() {
-		value, err := api.QueryRange(ctx, expression, prometheus.Range{
-			Start: time.Now().Add(-24 * time.Hour),
-			End:   time.Now(),
-			Step:  20 * time.Minute,
-		})
+	if len(response.Results) != 1 {
+		log.Fatalf("Expected len(Results) to be 1, but was %d", len(response.Results))
+	}
+	result := response.Results[0]
+
+	if len(result.Messages) > 0 {
+		log.Fatalf("Unexpected messages in result: %v", result.Messages)
+	}
+	if len(result.Err) > 0 {
+		log.Fatalf("Unexpected Err in result: %v", result.Err)
+	}
+
+	if len(result.Series) != 1 {
+		log.Fatalf("Expected len(Series) to be 1, but was %d", len(result.Series))
+	}
+	series := result.Series[0]
+
+	if len(series.Columns) != 2 {
+		log.Fatalf("Expected len(Columns) to be 2, but was %d", len(series.Columns))
+	}
+	if series.Columns[0] != "time" {
+		log.Fatalf("Expected Columns[0] to be 'time', but was %s", series.Columns[0])
+	}
+
+	points := []Point{}
+	for _, row := range series.Values {
+		timeNanos, err := row[0].(json.Number).Int64()
 		if err != nil {
-			log.Fatalf("Error from api.QueryRange: %s", err)
+			log.Fatalf("Error from Float64 of %v", row[0])
 		}
-		if value.Type() != model.ValMatrix {
-			log.Fatalf("Expected value.Type() == ValMatrix but got %d", value.Type())
-		}
-		c <- value.(model.Matrix)
-	}()
 
-	select {
-	case matrix := <-c:
-		return matrix
-	case <-time.After(timeoutDuration):
-		log.Fatalf("Prometheus timeout after %v", timeoutDuration)
-		return nil
+		value, err := row[1].(json.Number).Float64()
+		if err != nil {
+			log.Fatalf("Error from Float64 of %v", row[1])
+		}
+
+		point := Point{
+			Time:  time.Unix(0, timeNanos).UTC(),
+			Value: value,
+		}
+		points = append(points, point)
 	}
-}
 
-func doQueries(ctx context.Context, queries []Query, prometheusApi prometheus.QueryAPI,
-	numQueriesAtOnce int, timeoutDuration time.Duration) map[Query]model.Matrix {
-
-	queriesChan := make(chan Query, numQueriesAtOnce)
-	go func() {
-		for _, query := range queries {
-			queriesChan <- query
-		}
-		close(queriesChan)
-	}()
-
-	queryToMatrix := map[Query]model.Matrix{}
-	var queryToMatrixMutex sync.Mutex
-	var wg sync.WaitGroup
-	wg.Add(len(queries))
-	for query := range queriesChan {
-		go func(query Query) {
-			matrix := queryOrFatal(ctx, prometheusApi, query.expression, timeoutDuration)
-			queryToMatrixMutex.Lock()
-			queryToMatrix[query] = matrix
-			queryToMatrixMutex.Unlock()
-			wg.Done()
-		}(query)
-	}
-	wg.Wait()
-
-	return queryToMatrix
+	return points
 }

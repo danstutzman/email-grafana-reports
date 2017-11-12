@@ -7,5 +7,6 @@ go install -v -race .
 rm -f out.png
 $GOPATH/bin/email-grafana-reports \
   -pngPath out.png \
-  -prometheusHostPort localhost:9090
+  -influxdbUsername admin \
+  -influxdbPassword `cat INFLUXDB_PASSWORD`
 open out.png
