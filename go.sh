@@ -8,5 +8,6 @@ rm -f out.png
 $GOPATH/bin/email-grafana-reports \
   -pngPath out.png \
   -influxdbUsername admin \
-  -influxdbPassword `cat INFLUXDB_PASSWORD`
+  -influxdbPassword `cat INFLUXDB_PASSWORD` \
+  -grafanaConfigPath grafana_config.txt
 open out.png

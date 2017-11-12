@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -14,16 +15,17 @@ const NUM_CHART_QUERIES_AT_ONCE = 3
 const PROMETHEUS_TIMEOUT_MILLIS = 1000
 
 type Config struct {
-	pngPath          string
-	influxdbHostname string
-	influxdbPort     string
-	influxdbUsername string
-	influxdbPassword string
-	emailFrom        string
-	emailTo          string
-	emailSubject     string
-	smtpHostPort     string
-	doSendEmail      bool
+	pngPath           string
+	influxdbHostname  string
+	influxdbPort      string
+	influxdbUsername  string
+	influxdbPassword  string
+	emailFrom         string
+	emailTo           string
+	emailSubject      string
+	smtpHostPort      string
+	doSendEmail       bool
+	grafanaConfigPath string
 }
 
 type Point struct {
@@ -43,10 +45,15 @@ func getConfigFromFlags() Config {
 	flag.StringVar(&config.emailSubject, "emailSubject", "", "Subject for email report")
 	flag.StringVar(&config.smtpHostPort, "smtpHostPort", "",
 		"Hostname and port for SMTP server; e.g. localhost:25")
+	flag.StringVar(&config.grafanaConfigPath, "grafanaConfigPath", "",
+		"Location of file produced by get_grafana_config.sh")
 	flag.Parse()
 
 	if config.pngPath == "" {
 		log.Fatalf("You must specify -pngPath; try ./out.png")
+	}
+	if config.grafanaConfigPath == "" {
+		log.Fatalf("You must specify -grafanaConfigPath")
 	}
 	if config.emailFrom == "" &&
 		config.emailTo == "" &&
@@ -77,14 +84,21 @@ func main() {
 		log.Fatalf("Error from NewHTTPClient: %s", err)
 	}
 
-	command := "SELECT count(status) FROM \"belugacdn_logs\" WHERE time > now() - 1d GROUP BY time(1h) fill(null);"
-	command = strings.Replace(command, "$timeFilter", "time > now() - 10m", 1)
-	command = strings.Replace(command, "$__interval", "1m", 1)
-
-	points := query(client, "mydb", command)
+	dashboardsReader, err := os.Open(config.grafanaConfigPath)
+	if err != nil {
+		log.Fatalf("Error from Open: %s", err)
+	}
+	dashboards := parseDashboardsJson(dashboardsReader)
 
 	multichart := NewMultiChart()
-	multichart.CopyChart(drawChart(points, "BelugaCDN logs", false))
+	for _, dashboard := range dashboards {
+		command := "SELECT count(status) FROM \"belugacdn_logs\" WHERE time > now() - 1d GROUP BY time(1h) fill(null);"
+		command = strings.Replace(command, "$timeFilter", "time > now() - 10m", 1)
+		command = strings.Replace(command, "$__interval", "1m", 1)
+		points := query(client, "mydb", command)
+
+		multichart.CopyChart(drawChart(points, dashboard.Title, false))
+	}
 
 	log.Printf("Writing %s", config.pngPath)
 	multichart.SaveToPng(config.pngPath)
