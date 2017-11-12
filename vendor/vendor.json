@@ -9,6 +9,13 @@
 			"revisionTime": "2016-12-13T02:24:32Z"
 		},
 		{
+			"checksumSHA1": "isyBJXgOKYZGifWFIJhTMQb5n6Q=",
+			"path": "github.com/fogleman/gg",
+			"revision": "e611489b8685808726d3f603571b763982d92f67",
+			"revisionTime": "2017-07-28T22:55:21Z",
+			"tree": true
+		},
+		{
 			"checksumSHA1": "aJ/kX/eCUlrCJBZ26Hwh/RXzAIw=",
 			"path": "github.com/golang/freetype/raster",
 			"revision": "d9be45aaf7452cc30c0ceb1b1bf7efe1d17b7c87",
@@ -64,6 +71,18 @@
 			"path": "golang.org/x/image/font",
 			"revision": "1ff62c92167a10494f3e0b1e77cb67860a6ac43a",
 			"revisionTime": "2016-12-31T00:38:36Z"
+		},
+		{
+			"checksumSHA1": "ZqpTk12O8M6z4Ao3hp9O7VgruJs=",
+			"path": "golang.org/x/image/font/basicfont",
+			"revision": "f7e31b4ea2e3413ab91b4e7d2dc83e5f8d19a44c",
+			"revisionTime": "2017-09-30T09:09:42Z"
+		},
+		{
+			"checksumSHA1": "VHZL/jXyGDBq8n59E9w3vJKHoY8=",
+			"path": "golang.org/x/image/font/gofont/goregular",
+			"revision": "f7e31b4ea2e3413ab91b4e7d2dc83e5f8d19a44c",
+			"revisionTime": "2017-09-30T09:09:42Z"
 		},
 		{
 			"checksumSHA1": "o7VkCGBiKM5HXzVzrIci1YDlpvc=",
