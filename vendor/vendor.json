@@ -21,6 +21,25 @@
 			"revisionTime": "2016-12-08T06:47:10Z"
 		},
 		{
+			"checksumSHA1": "L6lDFW0n2BJgujmsUKEPMpX1HTk=",
+			"path": "github.com/influxdata/influxdb/client/v2",
+			"revision": "7cae889b13f76df9fa81786231ab07b45b2cb76d",
+			"revisionTime": "2017-11-11T04:01:00Z",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "xYMb9AG+fhqwRbMJ6xRHzspL+00=",
+			"path": "github.com/influxdata/influxdb/models",
+			"revision": "7cae889b13f76df9fa81786231ab07b45b2cb76d",
+			"revisionTime": "2017-11-11T04:01:00Z"
+		},
+		{
+			"checksumSHA1": "H/J/qLqzUONXIecHHKtVZmxJZZA=",
+			"path": "github.com/influxdata/influxdb/pkg/escape",
+			"revision": "7cae889b13f76df9fa81786231ab07b45b2cb76d",
+			"revisionTime": "2017-11-11T04:01:00Z"
+		},
+		{
 			"checksumSHA1": "SMUvX2B8eoFd9wnPofwBKlN6btE=",
 			"path": "github.com/prometheus/client_golang/api/prometheus",
 			"revision": "575f371f7862609249a1be4c9145f429fe065e32",
@@ -84,5 +103,5 @@
 			"revisionTime": "2017-01-06T00:12:52Z"
 		}
 	],
-	"rootPath": "github.com/danielstutzman/prometheus-email-reports"
+	"rootPath": "github.com/danielstutzman/email-grafana-reports"
 }
