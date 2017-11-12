@@ -129,8 +129,19 @@ func main() {
 					}
 					points := query(client, dbName, command)
 
+					yMin := ""
+					if len(panel.YAxes) > 0 {
+						yMin = panel.YAxes[0].Min
+					}
+
+					yMax := ""
+					if len(panel.YAxes) > 0 {
+						yMax = panel.YAxes[0].Max
+					}
+
 					if len(points) > 0 {
-						multichart.CopyChart(drawChart(points, panel.Title, false))
+						image := drawChart(points, panel.Title, yMin, yMax)
+						multichart.CopyChart(image)
 					} else {
 						multichart.WriteHeader("no points")
 					}

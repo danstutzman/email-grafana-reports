@@ -20,12 +20,18 @@ type Panel struct {
 	Title      string   `json:"title"`
 	Targets    []Target `json:"targets"`
 	DataSource string   `json:"datasource"`
+	YAxes      []YAxis  `json:"yaxes"`
 }
 
 type Target struct {
 	DsType      string `json:"dsType"`
 	Query       string `json:"query"`
 	Measurement string `json:"measurement"`
+}
+
+type YAxis struct {
+	Min string `json:"min"`
+	Max string `json:"max"`
 }
 
 func parseDashboardsJson(reader io.Reader) []Dashboard {

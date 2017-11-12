@@ -4,11 +4,12 @@ import (
 	"image"
 	"log"
 	"math"
+	"strconv"
 
 	chart "github.com/wcharczuk/go-chart"
 )
 
-func drawChart(points []Point, yAxisTitle string, setYRangeTo01 bool) image.Image {
+func drawChart(points []Point, yAxisTitle, yMin, yMax string) image.Image {
 	minXValue := math.MaxFloat64
 	maxXValue := -math.MaxFloat64
 	minYValue := math.MaxFloat64
@@ -42,9 +43,20 @@ func drawChart(points []Point, yAxisTitle string, setYRangeTo01 bool) image.Imag
 	series := chart.ContinuousSeries{XValues: xvalues, YValues: yvalues}
 	serieses = append(serieses, series)
 
-	if setYRangeTo01 {
-		minYValue = 0.0
-		maxYValue = 1.0
+	if yMin != "" {
+		var err error
+		minYValue, err = strconv.ParseFloat(yMin, 64)
+		if err != nil {
+			log.Fatalf("Error from ParseFloat for yMin '%s'", yMin)
+		}
+	}
+
+	if yMax != "" {
+		var err error
+		maxYValue, err = strconv.ParseFloat(yMax, 64)
+		if err != nil {
+			log.Fatalf("Error from ParseFloat for yMax '%s'", yMax)
+		}
 	}
 
 	graph := chart.Chart{
