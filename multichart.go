@@ -22,7 +22,7 @@ type MultiChart struct {
 }
 
 func NewMultiChart() *MultiChart {
-	bigImage := image.NewRGBA(image.Rect(0, 0, 600, 600))
+	bigImage := image.NewRGBA(image.Rect(0, 0, 400, 1500))
 
 	// set background to white
 	white := color.RGBA{255, 255, 255, 255}

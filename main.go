@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -93,13 +94,49 @@ func main() {
 	multichart := NewMultiChart()
 	for _, dashboard := range dashboards {
 		multichart.WriteHeader(dashboard.Title)
+		for _, row := range dashboard.Rows {
+			for _, panel := range row.Panels {
+				if panel.DataSource == "belugacdn" {
+					continue
+				}
 
-		command := "SELECT count(status) FROM \"belugacdn_logs\" WHERE time > now() - 1d GROUP BY time(1h) fill(null);"
-		command = strings.Replace(command, "$timeFilter", "time > now() - 10m", 1)
-		command = strings.Replace(command, "$__interval", "1m", 1)
-		points := query(client, "mydb", command)
+				dbName, dataSourceFound := map[string]string{
+					"":                   "mydb",
+					"belugacdn_logs":     "mydb",
+					"InfluxDB: cadvisor": "cadvisor",
+				}[panel.DataSource]
+				if !dataSourceFound {
+					log.Fatalf("Panel has unknown datasource: %+v", panel)
+				}
 
-		multichart.CopyChart(drawChart(points, dashboard.Title, false))
+				for _, target := range panel.Targets {
+					if target.DsType != "influxdb" {
+						log.Fatalf("Expected dsType=influxdb in panel %+v", panel)
+					}
+
+					var command string
+					if target.Query != "" {
+						command = target.Query
+					} else {
+						command = fmt.Sprintf(
+							"SELECT mean(value) FROM %s WHERE $timeFilter GROUP BY time($__interval)",
+							target.Measurement)
+					}
+					command = strings.Replace(command, "$timeFilter", "time > now() - 1d", 1)
+					command = strings.Replace(command, "$__interval", "1h", 1)
+					if command == "" {
+						log.Fatalf("Blank query for panel %+v", panel)
+					}
+					points := query(client, dbName, command)
+
+					if len(points) > 0 {
+						multichart.CopyChart(drawChart(points, panel.Title, false))
+					} else {
+						multichart.WriteHeader("no points")
+					}
+				}
+			}
+		}
 	}
 
 	log.Printf("Writing %s", config.pngPath)

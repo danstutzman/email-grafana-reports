@@ -36,6 +36,9 @@ func drawChart(points []Point, yAxisTitle string, setYRangeTo01 bool) image.Imag
 			maxYValue = yvalue
 		}
 	}
+	if minYValue == maxYValue {
+		minYValue = 0
+	}
 	series := chart.ContinuousSeries{XValues: xvalues, YValues: yvalues}
 	serieses = append(serieses, series)
 

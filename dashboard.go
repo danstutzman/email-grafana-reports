@@ -9,13 +9,30 @@ import (
 
 type Dashboard struct {
 	Title string `json:"title"`
+	Rows  []Row  `json:"rows"`
+}
+
+type Row struct {
+	Panels []Panel `json:"panels"`
+}
+
+type Panel struct {
+	Title      string   `json:"title"`
+	Targets    []Target `json:"targets"`
+	DataSource string   `json:"datasource"`
+}
+
+type Target struct {
+	DsType      string `json:"dsType"`
+	Query       string `json:"query"`
+	Measurement string `json:"measurement"`
 }
 
 func parseDashboardsJson(reader io.Reader) []Dashboard {
 	dashboards := []Dashboard{}
 	scanner := bufio.NewScanner(reader)
-	dashboard := Dashboard{}
 	for scanner.Scan() {
+		dashboard := Dashboard{}
 		err := json.Unmarshal(scanner.Bytes(), &dashboard)
 		if err != nil {
 			log.Fatalf("Error from Unmarshal: %s", err)
